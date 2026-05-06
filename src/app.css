@@ -1,3 +1,37 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .todo-item {
+    @apply flex items-center justify-between bg-white p-4 rounded-lg shadow-md mb-3;
+  }
+
+  .todo-item-body {
+    @apply flex items-center gap-3;
+  }
+
+  .todo-checkbox {
+    @apply h-5 w-5 text-blue-500 focus:ring-blue-500 border-gray-300 rounded;
+  }
+
+  .todo-text {
+    @apply text-lg text-gray-700;
+  }
+
+  .todo-text-done {
+    @apply text-lg line-through text-gray-400;
+  }
+
+  .todo-delete-button {
+    @apply text-red-500 font-semibold hover:underline;
+  }
+
+  .todo-input {
+    @apply w-64 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500;
+  }
+
+  .todo-add-button {
+    @apply px-4 py-2 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed;
+  }
+}
