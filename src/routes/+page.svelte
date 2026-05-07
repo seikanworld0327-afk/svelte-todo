@@ -63,6 +63,7 @@
     const trimmed = editingText.trim();
     if (!trimmed) {
       editingIndex = -1;
+      editingText = '';
       return;
     }
     todos[editingIndex].text = trimmed;
