@@ -45,7 +45,11 @@
   }
 
   function deleteTodo(index: number) {
-    if (editingIndex === index) editingIndex = -1;
+    if (editingIndex === index) {
+      editingIndex = -1;
+    } else if (editingIndex > index) {
+      editingIndex--;
+    }
     todos.splice(index, 1);
   }
 
