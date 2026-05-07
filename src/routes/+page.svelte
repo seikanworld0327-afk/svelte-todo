@@ -5,6 +5,8 @@
   let todos = $state([] as Todo[]);
   let newTodo: string = $state('');
   let isInitialized: boolean = $state(false);
+  let editingIndex: number = $state(-1);
+  let editingText: string = $state('');
 
   onMount(() => {
     if (typeof window !== 'undefined') {
@@ -43,7 +45,25 @@
   }
 
   function deleteTodo(index: number) {
+    if (editingIndex === index) editingIndex = -1;
     todos.splice(index, 1);
+  }
+
+  function startEdit(index: number) {
+    editingIndex = index;
+    editingText = todos[index].text;
+  }
+
+  function commitEdit() {
+    if (editingIndex === -1) return;
+    const trimmed = editingText.trim();
+    if (!trimmed) {
+      editingIndex = -1;
+      return;
+    }
+    todos[editingIndex].text = trimmed;
+    editingIndex = -1;
+    editingText = '';
   }
 </script>
 
@@ -80,9 +100,23 @@
             bind:checked={todo.done}
             class="h-5 w-5 text-blue-500 focus:ring-blue-500 border-gray-300 rounded"
           />
-          <span class={`text-lg ${todo.done ? 'line-through text-gray-400' : 'text-gray-700'}`}
-            >{todo.text}</span
-          >
+          {#if editingIndex === i}
+            <input
+              type="text"
+              bind:value={editingText}
+              onkeydown={(e) => {
+                if (e.key === 'Enter' && !e.isComposing) commitEdit();
+                if (e.key === 'Escape') editingIndex = -1;
+              }}
+              class="text-lg p-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          {:else}
+            <span
+              ondblclick={() => startEdit(i)}
+              class={`text-lg cursor-pointer ${todo.done ? 'line-through text-gray-400' : 'text-gray-700'}`}
+              >{todo.text}</span
+            >
+          {/if}
         </div>
         <button onclick={() => deleteTodo(i)} class="text-red-500 font-semibold hover:underline">
           Delete
