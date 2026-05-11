@@ -2,47 +2,47 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Commands
+## コマンド
 
 ```bash
-npm run dev          # start dev server
-npm run build        # production build
-npm run preview      # preview production build
-npm run check        # TypeScript type-check (svelte-check)
-npm run check:watch  # type-check in watch mode
-npm run lint         # Prettier check + ESLint
-npm run format       # auto-format with Prettier
+npm run dev          # 開発サーバー起動
+npm run build        # 本番ビルド
+npm run preview      # 本番ビルドのプレビュー
+npm run check        # TypeScript 型チェック (svelte-check)
+npm run check:watch  # 型チェックのウォッチモード
+npm run lint         # Prettier チェック + ESLint
+npm run format       # Prettier による自動フォーマット
 ```
 
-There are no automated tests in this project.
+このプロジェクトには自動テストはありません。
 
-## Architecture
+## アーキテクチャ
 
-This is a SvelteKit single-page todo app with no backend. All application state lives in `src/routes/+page.svelte` and is persisted to `localStorage`.
+バックエンドを持たない SvelteKit 製のシングルページ Todo アプリ。アプリの状態はすべて `src/routes/+page.svelte` に集約され、`localStorage` に永続化される。
 
-- **`src/routes/+page.svelte`** — the entire app: todo list state, add/delete/edit logic, and all UI
-- **`src/types/todo.ts`** — shared `Todo` type (`{ text: string; done: boolean }`)
-- **`src/lib/`** — empty; available for future `$lib` imports
-- **`src/app.css`** — Tailwind entry point (`@tailwind base/components/utilities`)
+- **`src/routes/+page.svelte`** — アプリ全体: Todo リストの状態管理、追加・削除・編集ロジック、UI
+- **`src/types/todo.ts`** — 共通の `Todo` 型 (`{ text: string; done: boolean }`)
+- **`src/lib/`** — 現在は空。将来的な `$lib` インポート用
+- **`src/app.css`** — Tailwind エントリーポイント (`@tailwind base/components/utilities`)
 
-The app uses **Svelte 5 runes** (`$state`, `$effect`) — not the legacy `writable` store pattern. The `$effect` that syncs to `localStorage` is guarded by an `isInitialized` flag to prevent overwriting storage before `onMount` has loaded the saved data.
+アプリは **Svelte 5 のルーン** (`$state`, `$effect`) を使用しており、レガシーな `writable` ストアパターンは使わない。`localStorage` に同期する `$effect` は、`onMount` がデータを読み込む前にストレージを上書きしないよう `isInitialized` フラグで保護されている。
 
-Deployed via **`@sveltejs/adapter-vercel`**.
+デプロイは **`@sveltejs/adapter-vercel`** を使用。
 
-## Code Conventions
+## コード規約
 
-**Formatting** (enforced by Prettier):
-- Single quotes, no trailing commas, 100-char print width, 2-space indent
-- `prettier-plugin-svelte` handles `.svelte` files
+**フォーマット**（Prettier で強制）:
+- シングルクォート、末尾カンマなし、1行100文字、インデント2スペース
+- `.svelte` ファイルは `prettier-plugin-svelte` で処理
 
-**TypeScript**: strict mode via `svelte-check`; all `.svelte` scripts use `lang="ts"`
+**TypeScript**: `svelte-check` によるストリクトモード。すべての `.svelte` スクリプトは `lang="ts"` を使用
 
-**Size guidelines** (from team style guide):
-- Functions ≤ 50 lines, files ≤ 800 lines, nesting ≤ 4 levels deep
-- Magic numbers should be extracted as named constants
+**サイズ指針**（チームスタイルガイドより）:
+- 関数は50行以内、ファイルは800行以内、ネストは4段以内
+- マジックナンバーは名前付き定数として切り出す
 
-## Pull Requests
+## プルリクエスト
 
-PRs use a Japanese-language template (`.github/PULL_REQUEST_TEMPLATE.md`). Sections: 概要, 背景・目的, 変更内容, スコープ対象外, テスト, 影響範囲, レビュー時の確認ポイント, スクリーンショット/動作ログ, and a self-review checklist.
+PR には日本語テンプレート (`.github/PULL_REQUEST_TEMPLATE.md`) を使用。セクション構成: 概要、背景・目的、変更内容、スコープ対象外、テスト、影響範囲、レビュー時の確認ポイント、スクリーンショット/動作ログ、セルフレビューチェックリスト。
 
-Code review comments follow a label convention: `must` (blocking), `ask` (clarification), `imo` (optional improvement), `nits` (minor), `good` (praise). Review comments are written in Japanese, phrased as suggestions with reasons.
+コードレビューコメントはラベル規約に従う: `must`（マージ前必須修正）、`ask`（意図確認）、`imo`（任意の改善提案）、`nits`（些細な指摘）、`good`（称賛）。レビューコメントは日本語で、理由を添えた提案ベースで記述する。
