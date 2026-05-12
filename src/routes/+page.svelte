@@ -86,12 +86,12 @@
 	function skipApiKey() { showApiModal = false; }
 
 	// ── Claude API ──────────────────────────────────────────
-	async function askAI(prompt: string): Promise<string> {
+	async function askAI(system: string, msgs: { role: 'user' | 'assistant'; content: string }[]): Promise<string> {
 		if (!apiKey) throw new Error('no key');
 		const res = await fetch('/api/chat', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ apiKey, prompt }),
+			body: JSON.stringify({ apiKey, system, messages: msgs }),
 		});
 		if (!res.ok) {
 			const body = await res.text();
@@ -101,30 +101,33 @@
 		return data.text;
 	}
 
-	function makePrompt(theme: string, ph: string, history: Message[], userMsg: string) {
-		const hist = history.length > 0
-			? history.map(m => `${m.role === 'user' ? '【あなた】' : '【AIメンバー】'} ${m.content}`).join('\n')
-			: '（まだ発言なし）';
-		return `あなたはSansanのグループディスカッションに参加している就活生AIです。
-テーマ：「${theme}」
-現在のフェーズ：「${ph}」
-これまでの会話：\n${hist}\n【あなた】 ${userMsg}
+	type AiPayload = { system: string; msgs: { role: 'user' | 'assistant'; content: string }[] };
 
-以下のルールで返答してください：
-・自分自身の具体的な意見・アイデア・根拠を必ず述べる（「〜だと思います、なぜなら〜」）
-・相手の発言に対して賛成・反対・補足のどれかの立場を明確にとる
-・フェーズに応じた発言をする（定義なら言葉の定義提案、課題分析なら問題点の指摘、アイデア出しなら具体案の提示、結論まとめなら整理）
-・ときどき他のメンバーに質問や意見を求める（「〜についてはどうお考えですか？」）
-・2〜3文で簡潔に。就活生らしい丁寧な話し言葉。日本語のみ。ラベル不要で発言内容だけ返す。`;
+	function makePrompt(theme: string, ph: string, history: Message[], userMsg: string): AiPayload {
+		const system = `あなたはSansanのグループディスカッションに参加している就活生です。
+テーマ：「${theme}」
+現フェーズ：「${ph}」
+
+ルール：
+・必ず自分の意見・アイデア・根拠を述べる（「〜だと思います、なぜなら〜」）
+・相手の発言に賛成・反対・補足のどれかの立場を明確にとる
+・フェーズを意識する（定義→定義提案、課題分析→問題点指摘、アイデア出し→具体案提示、結論→整理）
+・ときどき他メンバーに質問する（「〜についてはどうお考えですか？」）
+・2〜3文で簡潔に。就活生らしい丁寧な話し言葉。日本語のみ。発言内容だけ返す。`;
+
+		const msgs: { role: 'user' | 'assistant'; content: string }[] = [
+			...history.map(m => ({ role: m.role === 'user' ? 'user' as const : 'assistant' as const, content: m.content })),
+			{ role: 'user', content: userMsg },
+		];
+
+		return { system, msgs };
 	}
 
-	function makeFeedbackPrompt(theme: string, history: Message[]) {
-		const hist = history.filter(m => m.role === 'user').map((m, i) => `発言${i + 1}：${m.content}`).join('\n');
-		return `Sansanのグループディスカッション練習のフィードバックをお願いします。
-テーマ：「${theme}」
-ユーザーの発言一覧：\n${hist}
-以下の形式で詳しくフィードバックしてください：
-【総合スコア】XX点 / ランク：X（S/A/B/C）\n一行でランク評価
+	function makeFeedbackPrompt(theme: string, history: Message[]): AiPayload {
+		const system = `あなたはSansanの就活GD練習コーチです。ユーザーのGD発言を分析し、以下の形式で詳しくフィードバックしてください。就活コーチとして親切・丁寧に日本語で答えてください。
+
+【総合スコア】XX点 / ランク：X（S/A/B/C）
+一行でランク評価
 ━━━━━━━━━━━━━━━
 ✅ 良かった点
 ━━━━━━━━━━━━━━━
@@ -136,19 +139,22 @@
 ━━━━━━━━━━━━━━━
 ✏️ 発言の具体的な言い換え例
 ━━━━━━━━━━━━━━━
-ユーザーの実際の発言を2〜3個引用し、それぞれ以下の形式で改善案を示してください：
-【元の発言】「（実際の発言をそのまま引用）」
-→【改善案】「（より評価される言い方に書き換えた例）」
-💡（なぜその言い方が良いかを一言で説明）
+実際の発言を2〜3つ引用し以下の形式で：
+【元の発言】「（引用）」
+→【改善案】「（より良い言い方）」
+💡（理由を一言）
 ━━━━━━━━━━━━━━━
 🎯 Sansanの評価ポイントとの照らし合わせ
 ━━━━━━━━━━━━━━━
-（Sansanのミッションや選考傾向と照らし合わせて）
+（Sansanのミッション・選考傾向と照らし合わせて）
 ━━━━━━━━━━━━━━━
 📝 次回へのアドバイス
 ━━━━━━━━━━━━━━━
-（具体的なアドバイス）
-就活コーチとして親切・丁寧に日本語で答えてください。`;
+（具体的なアドバイス）`;
+
+		const hist = history.filter(m => m.role === 'user').map((m, i) => `発言${i + 1}：${m.content}`).join('\n');
+		const msgs = [{ role: 'user' as const, content: `テーマ：「${theme}」\nユーザーの発言一覧：\n${hist}` }];
+		return { system, msgs };
 	}
 
 	// ── Local Feedback ──────────────────────────────────────
@@ -272,7 +278,8 @@
 
 		let reply: string;
 		try {
-			reply = await askAI(makePrompt(t.title, PHASES[0], [], 'GDを始めます。最初の一言をお願いします。'));
+			const p0 = makePrompt(t.title, PHASES[0], [], 'GDを始めます。最初の一言をお願いします。');
+			reply = await askAI(p0.system, p0.msgs);
 		} catch {
 			reply = 'こんにちは！GDを始めましょう。まず今日のテーマの定義から確認したいのですが、いかがでしょうか？';
 		}
@@ -295,7 +302,8 @@
 
 		let reply: string;
 		try {
-			reply = await askAI(makePrompt(currentTheme!.title, PHASES[phase], messages.slice(0, -1), text));
+			const p1 = makePrompt(currentTheme!.title, PHASES[phase], messages.slice(0, -1), text);
+			reply = await askAI(p1.system, p1.msgs);
 			apiError = '';
 		} catch (e: any) {
 			apiError = !apiKey ? 'APIキーが未入力です（固定応答モード）' : `API接続エラー：${e?.message ?? e}`;
@@ -313,7 +321,8 @@
 			screen = 'feedback';
 			feedbackLoading = true;
 			try {
-				const raw = await askAI(makeFeedbackPrompt(currentTheme!.title, messages));
+				const fp = makeFeedbackPrompt(currentTheme!.title, messages);
+				const raw = await askAI(fp.system, fp.msgs);
 				feedbackData = parseAIFeedback(raw, currentTheme!.title);
 			} catch {
 				feedbackData = generateLocalFeedback(currentTheme!.title, messages);
@@ -325,7 +334,8 @@
 		loading = true;
 		let reply: string;
 		try {
-			reply = await askAI(makePrompt(currentTheme!.title, PHASES[phase], messages, `フェーズを「${PHASES[phase]}」に移ります。一言お願いします。`));
+			const p2 = makePrompt(currentTheme!.title, PHASES[phase], messages, `フェーズを「${PHASES[phase]}」に移ります。一言お願いします。`);
+			reply = await askAI(p2.system, p2.msgs);
 		} catch {
 			reply = TRANS_FALLBACKS[Math.min(phase - 1, TRANS_FALLBACKS.length - 1)];
 		}

@@ -2,7 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {
-	const { apiKey, prompt } = await request.json();
+	const { apiKey, system, messages } = await request.json();
 
 	if (!apiKey) {
 		throw error(400, 'APIキーが必要です');
@@ -18,7 +18,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		body: JSON.stringify({
 			model: 'claude-haiku-4-5-20251001',
 			max_tokens: 400,
-			messages: [{ role: 'user', content: prompt }],
+			system,
+			messages,
 		}),
 	});
 
