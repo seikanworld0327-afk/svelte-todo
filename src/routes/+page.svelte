@@ -59,6 +59,7 @@
 	let feedbackData = $state<FeedbackData | null>(null);
 	let feedbackLoading = $state(false);
 	let chatArea = $state<HTMLElement | null>(null);
+	let apiError = $state('');
 
 	// ── Derived ──────────────────────────────────────────────
 	let phaseColor = $derived(PHASE_COLORS[phase]);
@@ -96,7 +97,7 @@
 				'anthropic-dangerous-direct-browser-access': 'true',
 			},
 			body: JSON.stringify({
-				model: 'claude-sonnet-4-20250514',
+				model: 'claude-haiku-4-5-20251001',
 				max_tokens: 400,
 				messages: [{ role: 'user', content: prompt }],
 			}),
@@ -301,7 +302,9 @@
 		let reply: string;
 		try {
 			reply = await askAI(makePrompt(currentTheme!.title, PHASES[phase], messages.slice(0, -1), text));
-		} catch {
+			apiError = '';
+		} catch (e: any) {
+			apiError = !apiKey ? 'APIキーが未入力です（固定応答モード）' : `API接続エラー：${e?.message ?? e}`;
 			reply = FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
 		}
 		messages = [...messages, { role: 'assistant', content: reply, phase }];
@@ -457,6 +460,9 @@
       {/each}
     </div>
     <p class="theme-hint">📋 {currentTheme?.title}</p>
+    {#if apiError}
+      <p class="api-error-hint">⚠️ {apiError} — <button onclick={() => { showApiModal = true; }} style="background:none;border:none;color:#f7a248;cursor:pointer;font-size:11px;padding:0;text-decoration:underline">APIキーを設定</button></p>
+    {/if}
   </div>
 
   <div class="chat-area" bind:this={chatArea}>
@@ -672,6 +678,7 @@
   .phase-bar { display: flex; gap: 3px; margin-bottom: 7px; }
   .phase-seg { flex: 1; height: 3px; border-radius: 2px; transition: background 0.3s; }
   .theme-hint { font-size: 11px; color: #8b8fa8; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .api-error-hint { font-size: 11px; color: #f7a248; margin-top: 4px; }
 
   .chat-area { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
   .msg-row { display: flex; align-items: flex-end; gap: 8px; }
