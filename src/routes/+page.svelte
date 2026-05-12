@@ -3,11 +3,16 @@
 
 	// ── Data ──────────────────────────────────────────────
 	const THEMES = [
-		{ id: 1, title: '10年後の就活のあるべき姿を実現するサービスを考えよ', difficulty: '難', tag: 'サービス立案' },
-		{ id: 2, title: 'イノベーションとはなにか？', difficulty: '超難', tag: '抽象テーマ' },
-		{ id: 3, title: 'Sansanのデータを活用した新規事業を設計しなさい', difficulty: '難', tag: '新規事業' },
-		{ id: 4, title: '10年後の働き方のあるべき姿とは？', difficulty: '普通', tag: '抽象テーマ' },
-		{ id: 5, title: '中小企業のDXを推進するためのサービスを提案せよ', difficulty: '普通', tag: 'サービス立案' },
+		{ id: 1,  title: '10年後の就活のあるべき姿を実現するサービスを考えよ', difficulty: '難',  tag: 'サービス立案', isNew: false },
+		{ id: 2,  title: 'イノベーションとはなにか？', difficulty: '超難', tag: '抽象テーマ',  isNew: false },
+		{ id: 3,  title: 'Sansanのデータを活用した新規事業を設計しなさい', difficulty: '難',  tag: '新規事業',   isNew: false },
+		{ id: 4,  title: '10年後の働き方のあるべき姿とは？', difficulty: '普通', tag: '抽象テーマ',  isNew: false },
+		{ id: 5,  title: '中小企業のDXを推進するためのサービスを提案せよ', difficulty: '普通', tag: 'サービス立案', isNew: false },
+		{ id: 6,  title: '名刺がなくなった時代にSansanが提供できる新たな価値とは？', difficulty: '難',  tag: '新規事業',   isNew: true },
+		{ id: 7,  title: 'AIが普及した社会における「人脈」のあるべき姿とは？', difficulty: '超難', tag: '抽象テーマ',  isNew: true },
+		{ id: 8,  title: '副業・フリーランスが当たり前の時代の人脈管理サービスを提案せよ', difficulty: '普通', tag: 'サービス立案', isNew: true },
+		{ id: 9,  title: 'Sansanのデータを活用して採用市場を変えるサービスを設計せよ', difficulty: '難',  tag: '新規事業',   isNew: true },
+		{ id: 10, title: '地方中小企業のビジネスネットワークを活性化する方法を考えよ', difficulty: '普通', tag: 'サービス立案', isNew: true },
 	];
 	const PHASES = ['定義・論点整理', '課題分析', 'アイデア出し', '結論まとめ'];
 	const PHASE_COLORS = ['#4f8ef7', '#9b6cf7', '#e8873a', '#2cb67d'];
@@ -33,7 +38,7 @@
 	type Theme = typeof THEMES[0];
 	type FeedbackData = {
 		score: number; rank: string; rankMsg: string;
-		good: string; impr: string; sansan: string; advice: string; theme: string;
+		good: string; impr: string; rewrite: string; sansan: string; advice: string; theme: string;
 	};
 
 	let apiKey = $state('');
@@ -128,6 +133,13 @@
 ━━━━━━━━━━━━━━━
 （具体的に箇条書き）
 ━━━━━━━━━━━━━━━
+✏️ 発言の具体的な言い換え例
+━━━━━━━━━━━━━━━
+ユーザーの実際の発言を2〜3個引用し、それぞれ以下の形式で改善案を示してください：
+【元の発言】「（実際の発言をそのまま引用）」
+→【改善案】「（より評価される言い方に書き換えた例）」
+💡（なぜその言い方が良いかを一言で説明）
+━━━━━━━━━━━━━━━
 🎯 Sansanの評価ポイントとの照らし合わせ
 ━━━━━━━━━━━━━━━
 （Sansanのミッションや選考傾向と照らし合わせて）
@@ -188,10 +200,20 @@
 		if (avgLen >= 50) good.push(`・1発言の平均${avgLen}字と適切な長さです`);
 		else if (avgLen > 0) impr.push(`・1発言が平均${avgLen}字と短め。もう少し丁寧に説明しましょう`);
 
+		const rewriteExamples = userMsgs.slice(0, 2).map(m => {
+			const orig = m.content;
+			let improved = orig;
+			if (!hasStructure) improved = `まず論点を整理すると、${orig}という点が重要だと思います。`;
+			else if (!hasDefinition) improved = `「${orig.slice(0, 10)}…」を定義すると〇〇と捉えられ、${orig}という議論につながります。`;
+			else if (!hasQuestion) improved = `${orig} 皆さんはこの点についてどうお考えでしょうか？`;
+			return `【元の発言】「${orig}」\n→【改善案】「${improved}」\n💡 構造・定義・問いかけを意識するとより評価されます`;
+		}).join('\n\n');
+
 		return {
 			score, rank, rankMsg: rankMsgs[rank],
 			good: good.length ? good.join('\n') : '・発言内容から良い点を検出できませんでした',
 			impr: impr.length ? impr.join('\n') : '・特に大きな改善点はありませんでした',
+			rewrite: userMsgs.length > 0 ? rewriteExamples : '・発言がないため言い換え例を生成できませんでした',
 			sansan: `Sansanが見ているのは「発言量」ではなく「議論への貢献度」です。\n${hasStructure ? '論点整理ができていた点は「論理的思考力」に合致しています。' : '論点整理の発言を増やすと「論理的思考力」のアピールになります。'}\n${hasDefinition ? '定義から入る習慣はGDの王道で、Sansanでも高く評価されます。' : '「定義から入る」習慣をつけると、抽象テーマでもスムーズに議論できます。'}`,
 			advice: score >= 70
 				? '全体的に良い練習でした！次は「フェーズを意識した発言」（定義→課題→アイデア→結論）をより明確にすることを意識してみましょう。'
@@ -218,6 +240,7 @@
 			score, rank, rankMsg: rankMsgs[rank] || '',
 			good: extract('✅') || '（取得できませんでした）',
 			impr: extract('🔧') || '（取得できませんでした）',
+			rewrite: extract('✏️') || '（取得できませんでした）',
 			sansan: extract('🎯') || raw,
 			advice: extract('📝') || '',
 			theme,
@@ -400,7 +423,12 @@
       <button class="theme-card" onclick={() => startPractice(t)}>
         <div class="theme-tags">
           <span class="pill" style="background:{TAG_COLORS[t.tag] ?? '#4f8ef7'}22;color:{TAG_COLORS[t.tag] ?? '#4f8ef7'}">{t.tag}</span>
-          <span class="pill" style="background:{DIFF_COLORS[t.difficulty]}22;color:{DIFF_COLORS[t.difficulty]}">難易度：{t.difficulty}</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            {#if t.isNew}
+              <span class="pill" style="background:#e84393;color:#fff;font-weight:bold">NEW</span>
+            {/if}
+            <span class="pill" style="background:{DIFF_COLORS[t.difficulty]}22;color:{DIFF_COLORS[t.difficulty]}">難易度：{t.difficulty}</span>
+          </div>
         </div>
         <p class="theme-text">{t.title}</p>
       </button>
@@ -502,7 +530,7 @@
       </div>
     {:else if feedbackData}
       {@const rc = ({ S: '#f7c948', A: '#4f8ef7', B: '#2cb67d', C: '#e8873a' })[feedbackData.rank] ?? '#4f8ef7'}
-      {@const sectionColors: Record<string, string> = { '✅': '#2cb67d', '🔧': '#e8873a', '🎯': '#4f8ef7', '📝': '#9b6cf7' }}
+      {@const sectionColors: Record<string, string> = { '✅': '#2cb67d', '🔧': '#e8873a', '✏️': '#f7a248', '🎯': '#4f8ef7', '📝': '#9b6cf7' }}
       <div class="score-card" style="border-color:{rc};background:{rc}11">
         <div class="score-row">
           <div>
@@ -525,6 +553,7 @@
       {#each [
         { emoji: '✅', title: '✅ 良かった点', body: feedbackData.good, color: sectionColors['✅'] },
         { emoji: '🔧', title: '🔧 改善点', body: feedbackData.impr, color: sectionColors['🔧'] },
+        { emoji: '✏️', title: '✏️ 発言の具体的な言い換え例', body: feedbackData.rewrite, color: sectionColors['✏️'] },
         { emoji: '🎯', title: '🎯 Sansanの評価ポイントとの照らし合わせ', body: feedbackData.sansan, color: sectionColors['🎯'] },
         { emoji: '📝', title: '📝 次回へのアドバイス', body: feedbackData.advice, color: sectionColors['📝'] },
       ] as sec}
