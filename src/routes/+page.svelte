@@ -88,23 +88,17 @@
 	// ── Claude API ──────────────────────────────────────────
 	async function askAI(prompt: string): Promise<string> {
 		if (!apiKey) throw new Error('no key');
-		const res = await fetch('https://api.anthropic.com/v1/messages', {
+		const res = await fetch('/api/chat', {
 			method: 'POST',
-			headers: {
-				'content-type': 'application/json',
-				'x-api-key': apiKey,
-				'anthropic-version': '2023-06-01',
-				'anthropic-dangerous-direct-browser-access': 'true',
-			},
-			body: JSON.stringify({
-				model: 'claude-haiku-4-5-20251001',
-				max_tokens: 400,
-				messages: [{ role: 'user', content: prompt }],
-			}),
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ apiKey, prompt }),
 		});
-		if (!res.ok) throw new Error(String(res.status));
+		if (!res.ok) {
+			const body = await res.text();
+			throw new Error(`${res.status} ${body}`);
+		}
 		const data = await res.json();
-		return data?.content?.[0]?.text ?? '返答できませんでした。';
+		return data.text;
 	}
 
 	function makePrompt(theme: string, ph: string, history: Message[], userMsg: string) {
