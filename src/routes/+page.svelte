@@ -493,15 +493,13 @@
     {:else}
       <div class="voice-row">
         <span class="voice-status" class:recording={voiceState === 'listening'}>
-          {voiceState === 'listening' ? (liveText ? `🎙 ${liveText}` : '● 録音中…') : 'ボタンを押して話してください'}
+          {voiceState === 'listening' ? (liveText ? `🎙 ${liveText}` : '● 録音中…') : 'タップして話してください'}
         </span>
         <button
           class="mic-btn"
           class:recording={voiceState === 'listening'}
           disabled={loading}
-          onpointerdown={startListening}
-          onpointerup={stopListening}
-          onpointerleave={stopListening}
+          onclick={() => voiceState === 'listening' ? stopListening() : startListening()}
         >
           {voiceState === 'listening' ? '⏹' : '🎙️'}
         </button>
