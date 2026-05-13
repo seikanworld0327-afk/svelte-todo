@@ -60,6 +60,10 @@
 	let feedbackLoading = $state(false);
 	let chatArea = $state<HTMLElement | null>(null);
 	let apiError = $state('');
+	let coachMessages = $state<{ role: 'user' | 'assistant'; content: string }[]>([]);
+	let coachInput = $state('');
+	let coachLoading = $state(false);
+	let coachArea = $state<HTMLElement | null>(null);
 
 	// ── Derived ──────────────────────────────────────────────
 	let phaseColor = $derived(PHASE_COLORS[phase]);
@@ -350,7 +354,53 @@
 		}, 50);
 	}
 
-	function restart() { screen = 'select'; messages = []; phase = 0; timerVal = 0; }
+	function restart() {
+		screen = 'select'; messages = []; phase = 0; timerVal = 0;
+		coachMessages = []; coachInput = '';
+	}
+
+	function makeCoachPayload(): AiPayload {
+		const gdHistory = messages.map(m =>
+			`${m.role === 'user' ? 'ユーザー' : 'AIメンバー'}：${m.content}`
+		).join('\n');
+		const fb = feedbackData;
+		const fbSummary = fb
+			? `スコア：${fb.score}点 / ランク：${fb.rank}\n良かった点：${fb.good}\n改善点：${fb.impr}\nアドバイス：${fb.advice}`
+			: '';
+		const system = `あなたはSansanのGD練習コーチです。
+ユーザーは「${currentTheme?.title}」というテーマでGD練習を行いました。
+
+【GDの会話記録】
+${gdHistory}
+
+【フィードバック結果】
+${fbSummary}
+
+上記を踏まえて、ユーザーの質問や相談に親切・具体的に答えてください。
+改善案を聞かれたら実際の発言を引用して言い換え例を示してください。
+日本語のみ。就活コーチとして丁寧に。`;
+		return { system, msgs: coachMessages };
+	}
+
+	async function sendCoach() {
+		const text = coachInput.trim();
+		if (!text || coachLoading) return;
+		coachInput = '';
+		coachMessages = [...coachMessages, { role: 'user', content: text }];
+		coachLoading = true;
+		setTimeout(() => { if (coachArea) coachArea.scrollTop = coachArea.scrollHeight; }, 50);
+
+		let reply: string;
+		try {
+			const p = makeCoachPayload();
+			reply = await askAI(p.system, p.msgs);
+		} catch {
+			reply = 'すみません、うまく返答できませんでした。もう一度試してください。';
+		}
+		coachMessages = [...coachMessages, { role: 'assistant', content: reply }];
+		coachLoading = false;
+		setTimeout(() => { if (coachArea) coachArea.scrollTop = coachArea.scrollHeight; }, 50);
+	}
 
 	// ── Voice ──────────────────────────────────────────────
 	function startListening() {
@@ -580,6 +630,55 @@
       {/each}
     {/if}
 
+    <!-- Coach Chat -->
+    {#if feedbackData && !feedbackLoading}
+      <div class="coach-section">
+        <div class="coach-title">💬 コーチに質問する</div>
+        <p class="coach-sub">フィードバックについて深掘りしたり、改善案を相談できます</p>
+        <div class="coach-area" bind:this={coachArea}>
+          {#each coachMessages as msg}
+            {#if msg.role === 'user'}
+              <div class="coach-row user">
+                <div class="coach-bubble user">{@html escHtml(msg.content)}</div>
+                <div class="coach-avatar">🙋</div>
+              </div>
+            {:else}
+              <div class="coach-row ai">
+                <div class="coach-avatar">🎓</div>
+                <div class="coach-bubble ai">
+                  <div class="ai-label">GDコーチ</div>
+                  {@html escHtml(msg.content)}
+                </div>
+              </div>
+            {/if}
+          {/each}
+          {#if coachLoading}
+            <div class="coach-row ai">
+              <div class="coach-avatar">🎓</div>
+              <div class="thinking blink">考え中...</div>
+            </div>
+          {/if}
+          {#if coachMessages.length === 0}
+            <div class="coach-hints">
+              {#each ['この改善点をもっと詳しく教えて', 'どう言い換えればよかった？', 'Sansanで評価される発言とは？'] as hint}
+                <button class="hint-chip" onclick={() => { coachInput = hint; sendCoach(); }}>{hint}</button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+        <div class="coach-input-row">
+          <input
+            class="chat-input"
+            bind:value={coachInput}
+            placeholder="コーチに質問…"
+            disabled={coachLoading}
+            onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCoach(); } }}
+          />
+          <button class="send-btn" disabled={coachLoading} onclick={sendCoach}>送信</button>
+        </div>
+      </div>
+    {/if}
+
     <div class="btn-row">
       <button class="btn-primary" style="flex:1" onclick={restart}>もう一度練習</button>
       <button class="btn-secondary" onclick={() => screen = 'top'}>トップへ</button>
@@ -745,4 +844,21 @@
   .btn-row { display: flex; gap: 10px; margin-top: 16px; }
   .btn-secondary { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 14px; color: #8b8fa8; font-size: 14px; cursor: pointer; }
   .loading-center { text-align: center; padding: 32px; background: rgba(255,255,255,0.04); border-radius: 16px; margin-bottom: 16px; }
+
+  /* COACH CHAT */
+  .coach-section { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+  .coach-title { font-size: 15px; font-weight: bold; margin-bottom: 4px; }
+  .coach-sub { font-size: 12px; color: #8b8fa8; margin-bottom: 12px; }
+  .coach-area { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; max-height: 300px; overflow-y: auto; }
+  .coach-row { display: flex; align-items: flex-end; gap: 8px; }
+  .coach-row.user { justify-content: flex-end; }
+  .coach-row.ai { justify-content: flex-start; }
+  .coach-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .coach-bubble { max-width: 85%; padding: 10px 13px; font-size: 14px; line-height: 1.65; }
+  .coach-bubble.user { border-radius: 14px 3px 14px 14px; background: linear-gradient(135deg,#4f8ef7,#9b6cf7); color: #fff; }
+  .coach-bubble.ai { border-radius: 3px 14px 14px 14px; background: rgba(255,255,255,0.07); }
+  .coach-hints { display: flex; flex-direction: column; gap: 6px; }
+  .hint-chip { background: rgba(79,142,247,0.1); border: 1px solid rgba(79,142,247,0.3); border-radius: 20px; padding: 8px 14px; color: #4f8ef7; font-size: 12px; cursor: pointer; text-align: left; }
+  .hint-chip:hover { background: rgba(79,142,247,0.2); }
+  .coach-input-row { display: flex; gap: 8px; }
 </style>
